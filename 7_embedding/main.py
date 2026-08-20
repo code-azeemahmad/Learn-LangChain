@@ -1,3 +1,5 @@
+import math
+
 from langchain_core.documents import Document
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -82,8 +84,42 @@ def exercise_3_ingestion_pipeline():
     print()
 
 
+def run_verification_tests():
+    print("=== Test Suite: Determinism & Dimensional Verification ===")
+
+    # Test 4: Determinism test (same text embedded twice)
+    text = "Deterministic vector generation verification."
+    v1 = embeddings.embed_query(text)
+    v2 = embeddings.embed_query(text)
+
+    diff = sum(abs(a - b) for a, b in zip(v1, v2))
+    print(f"Test 4 (Determinism absolute diff): {diff:.8f}")
+    assert (
+        diff < 1e-6
+    ), "Embeddings returned non-deterministic vectors for identical inputs."
+
+    # Test 5: Semantic similarity preview (Cosine Similarity calculation)
+    def cosine_similarity(a: list[float], b: list[float]) -> float:
+        dot_product = sum(x * y for x, y in zip(a, b))
+        norm_a = math.sqrt(sum(x * x for x in a))
+        norm_b = math.sqrt(sum(y * y for y in b))
+        return dot_product / (norm_a * norm_b)
+
+    query_a = embeddings.embed_query("FastAPI dependency injection")
+    query_b = embeddings.embed_query("How does dependency injection work in FastAPI?")
+    query_c = embeddings.embed_query("The history of ancient Mesopotamian agriculture.")
+
+    sim_ab = cosine_similarity(query_a, query_b)
+    sim_ac = cosine_similarity(query_a, query_c)
+
+    print(f"Semantic match similarity (Related):   {sim_ab:.4f}")
+    print(f"Semantic match similarity (Unrelated): {sim_ac:.4f}")
+    assert sim_ab > sim_ac, "Semantic similarity relationship failed."
+    print("All tests passed cleanly.\n")
+
 
 if __name__ == "__main__":
     exercise_1_embed_query()
     exercise_2_embed_documents()
     exercise_3_ingestion_pipeline()
+    run_verification_tests()
