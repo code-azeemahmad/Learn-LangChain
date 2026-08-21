@@ -1,0 +1,44 @@
+FastAPI is a modern Python web framework for building APIs.
+
+FastAPI uses Python type hints and provides automatic request validation and API documentation.
+
+FastAPI applications are commonly executed using an ASGI server.
+
+Dependency injection is an important part of FastAPI application design. Dependencies can be declared using the Depends function.
+
+FastAPI supports asynchronous route handlers using Python async and await syntax.
+
+FastAPI can be combined with databases, authentication systems, and other backend services to build production applications.
+
+FastAPI handles dependency injection by allowing you to declare components your code needs using the Depends() function within your route parameters. When a request arrives, FastAPI automatically resolves the dependency tree, executes the required code, and passes the resulting values directly into your endpoint function.🛠️ Core MechanicsFastAPI heavily utilizes Python type hints and the Annotated syntax to wire up dependencies seamlessly.pythonfrom typing import Annotated
+from fastapi import FastAPI, Depends
+
+app = FastAPI()
+
+# 1. Define a dependency function
+def get_query_param(q: str | None = None):
+    return q
+
+@app.get("/items/")
+# 2. Inject it using Annotated and Depends
+async def read_items(query: Annotated[str | None, Depends(get_query_param)]):
+    return {"query_param": query}
+🔑 Key Features of FastAPI's DI SystemHierarchical Sub-dependencies: Dependencies can call other dependencies. FastAPI automatically travels down the "dependency tree" to solve and execute everything in the correct order.Request-Level Caching: If the same dependency is used multiple times across a single endpoint or its sub-dependencies, FastAPI automatically caches the result. It only executes the dependency once per request unless you specify Depends(get_db, use_cache=False).Resource Cleanup with yield: For resources that require teardown (like database sessions), you can use yield instead of return. FastAPI runs everything before the yield statement before the endpoint runs, and everything after the yield statement after the response is sent.pythondef get_db():
+    db = DatabaseSession()
+    try:
+        yield db  # Injected into the endpoint
+    finally:
+        db.close()  # Cleans up after the request finishes
+🎚️ Multi-Level ScopesDependencies can be applied at different layers of your application depending on how broadly you need them:Path Operation (Endpoint Level): Declared directly in the route function parameters to pass values into that specific function.Router Level: Applied to a group of routes using an APIRouter(dependencies=[Depends(verify_token)]). Useful for enforcing authentication on entire modules.Global Level: Declared when instantiating the app via FastAPI(dependencies=[Depends(global_logger)]). This runs for every single route in the application.🧪 Effortless Testing and OverridesOne of the greatest advantages of FastAPI's native DI system is the ability to override dependencies during testing. You can easily swap production databases or external APIs for mocks without altering your actual application code.pythonfrom fastapi.testclient import TestClient
+
+client = TestClient(app)
+
+# Override the production database dependency with a mock database
+app.dependency_overrides[get_db] = get_mock_db
+
+def test_endpoint():
+    response = client.get("/items/")
+    assert response.status_code == 200
+    
+# Clean up overrides after testing
+app.dependency_overrides.clear()
